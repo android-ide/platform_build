@@ -21,7 +21,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/include
 # acp to install libhost.
 LOCAL_ACP_UNAVAILABLE:= true
 
-include $(BUILD_HOST_STATIC_LIBRARY)
+include $(BUILD_STATIC_LIBRARY)
 
 # Include toolchain prebuilt modules if they exist.
 -include $(TARGET_TOOLCHAIN_ROOT)/toolchain.mk
