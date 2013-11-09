@@ -133,6 +133,31 @@ def:distribute_nav() ?>
         });
     </script>
 <?cs /def ?>
+
+<?cs
+def:google_nav() ?>
+  <div class="wrap clearfix" id="body-content">
+    <div class="col-4" id="side-nav" itemscope itemtype="http://schema.org/SiteNavigationElement">
+      <div id="devdoc-nav" class="scroll-pane">
+<a class="totop" href="#top" data-g-event="left-nav-top">to top</a>
+
+<?cs
+        include:"../../../../frameworks/base/docs/html/google/google_toc.cs" ?>
+        
+
+      </div>
+      <script type="text/javascript">
+       showGoogleRefTree();
+    
+      </script>
+    </div> <!-- end side-nav -->
+    <script>
+      $(document).ready(function() {
+        scrollIntoView("devdoc-nav");
+        });
+    </script>
+<?cs /def ?>
+
 <?cs
 def:about_nav() ?>
   <div class="wrap clearfix" id="body-content">
@@ -171,12 +196,18 @@ def:dist_more_nav() ?>
         scrollIntoView("devdoc-nav");
         });
     </script>
+:
+
 <?cs /def ?>
 <?cs # The default side navigation for the reference docs ?><?cs 
 def:default_left_nav() ?>
+<?cs if:reference.gcm || reference.gms ?>
+  <?cs call:google_nav() ?>
+<?cs else ?>
   <div class="wrap clearfix" id="body-content">
     <div class="col-4" id="side-nav" itemscope itemtype="http://schema.org/SiteNavigationElement">
       <div id="devdoc-nav">
+
 <a class="totop" href="#top" data-g-event="left-nav-top">to top</a>
       <div id="api-nav-header">
         <div id="api-level-toggle">
@@ -272,7 +303,9 @@ def:default_left_nav() ?>
         scrollIntoView("packages-nav");
         scrollIntoView("classes-nav");
         });
-    </script><?cs 
+    </script>
+<?cs /if ?>
+    <?cs 
 /def ?>
 
 <?cs 
@@ -288,7 +321,7 @@ def:custom_left_nav() ?><?cs
   elif:tools ?><?cs 
     call:tools_nav() ?><?cs
   elif:google ?><?cs 
-    call:dist_google_nav() ?><?cs 
+    call:google_nav() ?><?cs 
   elif:more ?><?cs 
     call:dist_more_nav() ?><?cs
   elif:distribute ?><?cs 
@@ -296,7 +329,7 @@ def:custom_left_nav() ?><?cs
   elif:about ?><?cs 
     call:about_nav() ?><?cs 
   else ?><?cs 
-    call:default_left_nav() ?><?cs 
+    call:default_left_nav() ?> <?cs 
   /if ?><?cs 
 /def ?>
 
@@ -327,7 +360,11 @@ def:custom_footerlinks() ?>
 /def ?>
 
 <?cs # appears on the right side of the blue bar at the bottom off every page ?><?cs 
-def:custom_buildinfo() ?>
-  Android <?cs var:sdk.version ?>&nbsp;r<?cs var:sdk.rel.id ?> - <?cs var:page.now ?>
+def:custom_buildinfo() ?><?cs
+  if:!google && !reference.gcm && !reference.gms ?>
+    Android <?cs var:sdk.version ?>&nbsp;r<?cs var:sdk.rel.id ?> &mdash; <?cs
+  /if ?>
+<script src="<?cs var:toroot ?>timestamp.js" type="text/javascript"></script>
+<script>document.write(BUILD_TIMESTAMP)</script>
 <?cs /def ?>
 

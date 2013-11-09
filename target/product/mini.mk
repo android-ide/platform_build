@@ -61,16 +61,18 @@ PRODUCT_PACKAGES += \
     MediaProvider \
     PackageInstaller \
     SettingsProvider \
+    Shell \
     TelephonyProvider \
     UserDictionaryProvider \
+    abcc \
     apache-xml \
     audio \
-    bluetoothd \
     bouncycastle \
     bu \
     cacerts \
     com.android.location.provider \
     com.android.location.provider.xml \
+    conscrypt \
     core \
     core-junit \
     dalvikvm \
@@ -83,9 +85,7 @@ PRODUCT_PACKAGES += \
     dx \
     ext \
     framework-res \
-    hciattach \
     hprof-conv \
-    icu.dat \
     installd \
     ip \
     ip-up-vpn \
@@ -98,6 +98,7 @@ PRODUCT_PACKAGES += \
     libOpenSLES \
     libaudiopreprocessing \
     libaudioutils \
+    libbcc \
     libcrypto \
     libdownmix \
     libdvm \
@@ -114,10 +115,13 @@ PRODUCT_PACKAGES += \
     libmdnssd \
     libnativehelper \
     libnfc_ndef \
+    libportable \
     libpowermanager \
     libspeexresampler \
     libsqlite_jni \
     libssl \
+    libstagefright \
+    libstagefright_chromium_http \
     libstagefright_soft_aacdec \
     libstagefright_soft_aacenc \
     libstagefright_soft_amrdec \
@@ -125,6 +129,7 @@ PRODUCT_PACKAGES += \
     libstagefright_soft_amrwbenc \
     libstagefright_soft_flacenc \
     libstagefright_soft_g711dec \
+    libstagefright_soft_gsmdec \
     libstagefright_soft_h264dec \
     libstagefright_soft_h264enc \
     libstagefright_soft_mp3dec \
@@ -137,15 +142,18 @@ PRODUCT_PACKAGES += \
     libwebrtc_audio_preprocessing \
     libwilhelm \
     libz \
-    lint \
     mdnsd \
     network \
+    okhttp \
     pand \
     requestsync \
     screencap \
     sdptool \
     sensorservice \
-    wpa_supplicant
+    lint \
+    telephony-common \
+    voip-common \
+    mms-common
 
 PRODUCT_COPY_FILES += \
     system/core/rootdir/init.usb.rc:root/init.usb.rc \
@@ -154,19 +162,13 @@ PRODUCT_COPY_FILES += \
 
 PRODUCT_PACKAGES += \
     Bluetooth \
+    FusedLocation \
     InputDevices \
     LatinIME \
-    Launcher2 \
     Phone \
     Provision \
-    Settings \
-    SystemUI \
     hostapd \
     wpa_supplicant.conf
-
-
-PRODUCT_PACKAGES += \
-    icu.dat
 
 PRODUCT_PACKAGES += \
     librs_jni \
@@ -186,11 +188,6 @@ PRODUCT_PACKAGES += \
     local_time.default
 
 PRODUCT_COPY_FILES += \
-    system/bluetooth/data/audio.conf:system/etc/bluetooth/audio.conf \
-    system/bluetooth/data/auto_pairing.conf:system/etc/bluetooth/auto_pairing.conf \
-    system/bluetooth/data/blacklist.conf:system/etc/bluetooth/blacklist.conf \
-    system/bluetooth/data/input.conf:system/etc/bluetooth/input.conf \
-    system/bluetooth/data/network.conf:system/etc/bluetooth/network.conf \
     frameworks/av/media/libeffects/data/audio_effects.conf:system/etc/audio_effects.conf
 
 PRODUCT_PROPERTY_OVERRIDES += \
@@ -201,7 +198,8 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_PACKAGES += \
     drmserver \
     libdrmframework \
-    libdrmframework_jni
+    libdrmframework_jni \
+    WAPPushManager
 
 
 # Additional settings used in all AOSP builds
@@ -214,3 +212,16 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/base.mk)
 $(call inherit-product-if-exists, frameworks/base/data/keyboards/keyboards.mk)
 $(call inherit-product-if-exists, frameworks/base/data/fonts/fonts.mk)
 $(call inherit-product-if-exists, frameworks/base/data/sounds/AudioPackage5.mk)
+
+#----------------- For PDK ------------------------------
+PRODUCT_PACKAGES += \
+    TestingCamera \
+    Home \
+    SystemUI \
+    Settings \
+    libsurfaceflinger_ddmconnection
+
+# This is not necessary for mini, but is for mini-emulator as it should
+# be included in platform.zip
+PRODUCT_PACKAGES += camera.goldfish.jpeg
+

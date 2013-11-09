@@ -23,24 +23,18 @@
 
 GRANDFATHERED_ALL_PREBUILT := \
 	akmd2 \
-	am \
 	ap_gain.bin \
-	audio.conf \
-	auto_pairing.conf \
 	AVRCP.kl \
 	batch \
 	bitmap_size.txt \
-	blacklist.conf \
 	bmgr \
 	bp.img \
 	brcm_guci_drv \
 	bypassfactory \
 	cdt.bin \
 	chat-ril \
-	content \
 	cpcap-key.kl \
 	data \
-	dbus.conf \
 	dev \
 	egl.cfg \
 	firmware_error.565 \
@@ -61,7 +55,6 @@ GRANDFATHERED_ALL_PREBUILT := \
 	init.sholes.rc \
 	init.stingray.rc \
 	input \
-	input.conf \
 	kernel \
 	lbl \
 	libEGL_POWERVR_SGX530_121.so \
@@ -80,7 +73,6 @@ GRANDFATHERED_ALL_PREBUILT := \
 	mbm_consumer.bin \
 	mdm_panicd \
 	monkey \
-	network.conf \
 	pm \
 	pppd-ril \
 	pppd-ril.options \

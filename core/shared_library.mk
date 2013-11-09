@@ -17,9 +17,20 @@ ifneq ($(strip $(OVERRIDE_BUILT_MODULE_PATH)),)
 $(error $(LOCAL_PATH): Illegal use of OVERRIDE_BUILT_MODULE_PATH)
 endif
 ifneq ($(strip $(LOCAL_MODULE_STEM)$(LOCAL_BUILT_MODULE_STEM)),)
-$(error $(LOCAL_PATH): Can not set module stem for a library)
+$(error $(LOCAL_PATH): Cannot set module stem for a library)
 endif
 
+$(call target-shared-library-hook)
+
+skip_build_from_source :=
+ifdef LOCAL_PREBUILT_MODULE_FILE
+ifeq (,$(call if-build-from-source,$(LOCAL_MODULE),$(LOCAL_PATH)))
+include $(BUILD_PREBUILT)
+skip_build_from_source := true
+endif
+endif
+
+ifndef skip_build_from_source
 ####################################################
 ## Add profiling libraries if aprof is turned
 ####################################################
@@ -46,7 +57,7 @@ my_target_fdo_lib := $(TARGET_FDO_LIB)
 my_target_libgcc := $(TARGET_LIBGCC)
 my_target_crtbegin_so_o := $(TARGET_CRTBEGIN_SO_O)
 my_target_crtend_so_o := $(TARGET_CRTEND_SO_O)
-ifdef LOCAL_NDK_VERSION
+ifdef LOCAL_SDK_VERSION
 # Make sure the prebuilt NDK paths are put ahead of the TARGET_GLOBAL_LD_DIRS,
 # so we don't have race condition when the system libraries (such as libc, libstdc++) are also built in the tree.
 my_target_global_ld_dirs := \
@@ -68,3 +79,5 @@ $(linked_module): $(all_objects) $(all_libraries) \
                   $(LOCAL_ADDITIONAL_DEPENDENCIES) \
                   $(my_target_crtbegin_so_o) $(my_target_crtend_so_o)
 	$(transform-o-to-shared-lib)
+
+endif  # skip_build_from_source

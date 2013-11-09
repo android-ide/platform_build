@@ -15,6 +15,10 @@
 #
 
 ifeq (,$(ONE_SHOT_MAKEFILE))
+ifneq ($(TARGET_BUILD_PDK),true)
+  TARGET_BUILD_FACTORY=true
+endif
+ifeq ($(TARGET_BUILD_FACTORY),true)
 
 # PRODUCT_FACTORY_RAMDISK_MODULES consists of "<module_name>:<install_path>[:<install_path>...]" tuples.
 # <install_path> is relative to TARGET_FACTORY_RAMDISK_OUT.
@@ -40,7 +44,7 @@ $(if $(filter 1,$(words $(_iofrm_src))), \
     $(eval _fulldest := $(TARGET_FACTORY_RAMDISK_OUT)/$(1)) \
     $(eval $(call copy-one-file,$(_iofrm_src),$(_fulldest))) \
     $(eval INTERNAL_FACTORY_RAMDISK_EXTRA_MODULES_FILES += $(_fulldest)), \
-    $(error Error: Can not find match in "$(2)" for "$(1)") \
+    $(error Error: Cannot find match in "$(2)" for "$(1)") \
     )
 endef
 
@@ -83,8 +87,9 @@ endif
 $(INSTALLED_FACTORY_RAMDISK_TARGET) : $(MKBOOTIMG) $(TARGET_RAMDISK_KERNEL) $(INSTALLED_FACTORY_RAMDISK_FS)
 	$(call pretty,"Target factory ram disk img format: $@")
 	$(MKBOOTIMG) --kernel $(TARGET_RAMDISK_KERNEL) --ramdisk $(INSTALLED_FACTORY_RAMDISK_FS) \
-            --base $(BOARD_KERNEL_BASE) $(RAMDISK_CMDLINE) --output $@
+            --base $(BOARD_KERNEL_BASE) $(BOARD_MKBOOTIMG_ARGS) $(RAMDISK_CMDLINE) --output $@
 
 endif
 
+endif # TARGET_BUILD_PDK
 endif # ONE_SHOT_MAKEFILE

@@ -53,14 +53,6 @@ $(error $(LOCAL_PATH): Package modules may not define LOCAL_MODULE)
 endif
 LOCAL_MODULE := $(LOCAL_PACKAGE_NAME)
 
-# Android packages should use Android resources or assets.
-ifneq (,$(LOCAL_JAVA_RESOURCE_DIRS))
-$(error $(LOCAL_PATH): Package modules may not set LOCAL_JAVA_RESOURCE_DIRS)
-endif
-ifneq (,$(LOCAL_JAVA_RESOURCE_FILES))
-$(error $(LOCAL_PATH): Package modules may not set LOCAL_JAVA_RESOURCE_FILES)
-endif
-
 ifeq ($(strip $(LOCAL_MANIFEST_FILE)),)
 LOCAL_MANIFEST_FILE := AndroidManifest.xml
 endif
@@ -138,9 +130,11 @@ LOCAL_BUILT_MODULE_STEM := package.apk
 
 LOCAL_PROGUARD_ENABLED:=$(strip $(LOCAL_PROGUARD_ENABLED))
 ifndef LOCAL_PROGUARD_ENABLED
+ifneq ($(DISABLE_PROGUARD),true)
 ifneq ($(filter user userdebug, $(TARGET_BUILD_VARIANT)),)
     # turn on Proguard by default for user & userdebug build
     LOCAL_PROGUARD_ENABLED :=full
+endif
 endif
 endif
 ifeq ($(LOCAL_PROGUARD_ENABLED),disabled)
@@ -159,6 +153,7 @@ ifneq (true,$(WITH_DEXPREOPT))
 LOCAL_DEX_PREOPT :=
 else
 ifeq (,$(TARGET_BUILD_APPS))
+ifeq (,$(LOCAL_APK_LIBRARIES))
 ifneq (,$(LOCAL_SRC_FILES))
 ifndef LOCAL_DEX_PREOPT
 LOCAL_DEX_PREOPT := true
@@ -166,9 +161,41 @@ endif
 endif
 endif
 endif
+endif
 ifeq (false,$(LOCAL_DEX_PREOPT))
 LOCAL_DEX_PREOPT :=
 endif
+
+ifeq (true,$(EMMA_INSTRUMENT))
+ifndef LOCAL_EMMA_INSTRUMENT
+# No emma for test apks.
+ifeq (,$(filer tests,$(LOCAL_MODULE_TAGS))$(LOCAL_INSTRUMENTATION_FOR))
+LOCAL_EMMA_INSTRUMENT := true
+endif # No test apk
+endif # LOCAL_EMMA_INSTRUMENT is not set
+else
+LOCAL_EMMA_INSTRUMENT := false
+endif # EMMA_INSTRUMENT is true
+
+ifeq (true,$(LOCAL_EMMA_INSTRUMENT))
+ifeq (true,$(EMMA_INSTRUMENT_STATIC))
+LOCAL_STATIC_JAVA_LIBRARIES += emma
+else
+ifdef LOCAL_SDK_VERSION
+ifdef TARGET_BUILD_APPS
+# In unbundled build merge the emma library into the apk.
+LOCAL_STATIC_JAVA_LIBRARIES += emma
+else
+# If build against the SDK in full build, core.jar is not used,
+# we have to use prebiult emma.jar to make Proguard happy;
+# Otherwise emma classes are included in core.jar.
+LOCAL_PROGUARD_FLAGS += -libraryjars $(EMMA_JAR)
+endif # full build
+endif # LOCAL_SDK_VERSION
+endif # EMMA_INSTRUMENT_STATIC
+endif # LOCAL_EMMA_INSTRUMENT
+
+rs_compatibility_jni_libs :=
 
 #################################
 include $(BUILD_SYSTEM)/java.mk
@@ -303,16 +330,22 @@ jni_shared_libraries := \
       $(addsuffix $(so_suffix), \
         $(LOCAL_JNI_SHARED_LIBRARIES)))
 
+# Include RS dynamically-generated libraries as well
+# Keep this ifneq, as the += otherwise adds spaces that need to be stripped.
+ifneq ($(rs_compatibility_jni_libs),)
+jni_shared_libraries += $(rs_compatibility_jni_libs)
+endif
+
 # App explicitly requires the prebuilt NDK libstlport_shared.so.
 # libstlport_shared.so should never go to the system image.
 # Instead it should be packaged into the apk.
 ifeq (stlport_shared,$(LOCAL_NDK_STL_VARIANT))
-ifndef LOCAL_NDK_VERSION
-$(error LOCAL_NDK_VERSION has to be defined together with LOCAL_NDK_STL_VARIANT, \
+ifndef LOCAL_SDK_VERSION
+$(error LOCAL_SDK_VERSION has to be defined together with LOCAL_NDK_STL_VARIANT, \
     LOCAL_PACKAGE_NAME=$(LOCAL_PACKAGE_NAME))
 endif
 jni_shared_libraries += \
-    $(HISTORICAL_NDK_VERSIONS_ROOT)/android-ndk-r$(LOCAL_NDK_VERSION)/sources/cxx-stl/stlport/libs/$(TARGET_CPU_ABI)/libstlport_shared.so
+    $(HISTORICAL_NDK_VERSIONS_ROOT)/current/sources/cxx-stl/stlport/libs/$(TARGET_CPU_ABI)/libstlport_shared.so
 endif
 
 # Set the abi directory used by the local JNI shared libraries.
@@ -355,6 +388,9 @@ $(LOCAL_BUILT_MODULE): PRIVATE_CERTIFICATE := $(certificate)
 PACKAGES.$(LOCAL_PACKAGE_NAME).PRIVATE_KEY := $(private_key)
 PACKAGES.$(LOCAL_PACKAGE_NAME).CERTIFICATE := $(certificate)
 
+$(LOCAL_BUILT_MODULE): PRIVATE_ADDITIONAL_CERTIFICATES := $(foreach c,\
+    $(LOCAL_ADDITIONAL_CERTIFICATES), $(c).x509.pem $(c).pk8)
+
 # Define the rule to build the actual package.
 $(LOCAL_BUILT_MODULE): $(AAPT) | $(ZIPALIGN)
 ifdef LOCAL_DEX_PREOPT
@@ -384,16 +420,22 @@ endif
 ifneq ($(full_classes_jar),)
 	$(add-dex-to-package)
 endif
+	$(add-carried-java-resources)
+ifneq ($(extra_jar_args),)
+	$(add-java-resources-to-package)
+endif
 	$(sign-package)
-	@# Alignment must happen after all other zip operations.
-	$(align-package)
 ifdef LOCAL_DEX_PREOPT
 	$(hide) rm -f $(patsubst %.apk,%.odex,$@)
 	$(call dexpreopt-one-file,$@,$(patsubst %.apk,%.odex,$@))
 ifneq (nostripping,$(LOCAL_DEX_PREOPT))
 	$(call dexpreopt-remove-classes.dex,$@)
 endif
+endif
+	@# Alignment must happen after all other zip operations.
+	$(align-package)
 
+ifdef LOCAL_DEX_PREOPT
 built_odex := $(basename $(LOCAL_BUILT_MODULE)).odex
 $(built_odex): $(LOCAL_BUILT_MODULE)
 endif
@@ -406,5 +448,38 @@ PACKAGES.$(LOCAL_PACKAGE_NAME).RESOURCE_OVERLAYS := $(package_resource_overlays)
 endif
 
 PACKAGES := $(PACKAGES) $(LOCAL_PACKAGE_NAME)
+
+# Dist the files that can be bundled in system.img.
+# They include the jni shared libraries and the apk with jni libraries stripped.
+ifeq ($(LOCAL_DIST_BUNDLED_BINARIES),true)
+ifneq ($(filter $(LOCAL_PACKAGE_NAME),$(TARGET_BUILD_APPS)),)
+ifneq ($(strip $(jni_shared_libraries)),)
+dist_subdir := bundled_$(LOCAL_PACKAGE_NAME)
+$(foreach f, $(jni_shared_libraries), \
+  $(call dist-for-goals, apps_only, $(f):$(dist_subdir)/$(notdir $(f))))
+
+apk_jni_stripped := $(intermediates)/jni_stripped/package.apk
+$(apk_jni_stripped): PRIVATE_JNI_SHARED_LIBRARIES := $(notdir $(jni_shared_libraries))
+$(apk_jni_stripped) : $(LOCAL_BUILT_MODULE) | $(ZIPALIGN)
+	@rm -rf $(dir $@) && mkdir -p $(dir $@)
+	$(hide) cp $< $@
+	$(hide) zip -d $@ $(foreach f,$(PRIVATE_JNI_SHARED_LIBRARIES),\*/$(f))
+	$(call align-package)
+
+$(call dist-for-goals, apps_only, $(apk_jni_stripped):$(dist_subdir)/$(LOCAL_PACKAGE_NAME).apk)
+
+endif  # jni_shared_libraries
+endif  # apps_only build
+endif  # LOCAL_DIST_BUNDLED_BINARIES
+
+# Lint phony targets
+.PHONY: lint-$(LOCAL_PACKAGE_NAME)
+lint-$(LOCAL_PACKAGE_NAME): PRIVATE_PATH := $(LOCAL_PATH)
+lint-$(LOCAL_PACKAGE_NAME): PRIVATE_LINT_FLAGS := $(LOCAL_LINT_FLAGS)
+lint-$(LOCAL_PACKAGE_NAME) :
+	@echo lint $(PRIVATE_PATH)
+	$(LINT) $(PRIVATE_LINT_FLAGS) $(PRIVATE_PATH)
+
+lintall : lint-$(LOCAL_PACKAGE_NAME)
 
 endif # skip_definition

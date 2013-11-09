@@ -122,15 +122,64 @@ $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
 # Changing where ro.carrier value is instantiated for system/build.prop
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
 
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/data/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+
 # Now we switched to build against Mac OS X SDK 10.6
 $(call add-clean-step, rm -rf $(OUT_DIR)/host/darwin-x86/obj)
 
 $(call add-clean-step, rm -f $(OUT_DIR)/versions_checked.mk)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
 
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/STATIC_LIBRARIES)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/SHARED_LIBRARIES)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/EXECUTABLES)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/lib/*.o)
+
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/STATIC_LIBRARIES)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/SHARED_LIBRARIES)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/EXECUTABLES)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/lib/*.o)
+
+# JB MR2!!!!!!!  AND *NO*, THIS WILL NOT BE K-WHATEVER.
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+
+# Start of "K" development!
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# GCC 4.7
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/STATIC_LIBRARIES)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/SHARED_LIBRARIES)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/EXECUTABLES)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/lib/*.o)
+
+# Wait, back to some JB development!
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
+
+# So...  funny story.  Recall when I mentioned above the
+# "JB MR2" thing?  I didn't mean that.  In fact, while I was
+# writing JB MR, my head was thinking 4.2, and things got
+# cross-wired as they are wont to do, and we ended up with
+# JB MR2, which didn't actually exist.
+#
+# Well, didn't exist then.
+#
+# Now it does.  Say hi, JB MR2!
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/build.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/app/*)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/*)
 
 # ************************************************
 # NEWER CLEAN STEPS MUST BE AT THE END OF THE LIST

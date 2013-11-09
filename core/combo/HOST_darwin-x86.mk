@@ -36,57 +36,75 @@ endif # BUILD_HOST_static
 
 build_mac_version := $(shell sw_vers -productVersion)
 
-ifneq ($(strip $(BUILD_MAC_SDK_EXPERIMENTAL)),)
-# SDK 10.7 and higher is not fully compatible with Android.
-mac_sdk_versions_supported :=  10.7 10.8
+mac_sdk_versions_supported :=  10.6 10.7 10.8
+ifneq ($(strip $(MAC_SDK_VERSION)),)
+mac_sdk_version := $(MAC_SDK_VERSION)
+ifeq ($(filter $(mac_sdk_version),$(mac_sdk_versions_supported)),)
+$(warning ****************************************************************)
+$(warning * MAC_SDK_VERSION $(MAC_SDK_VERSION) isn't one of the supported $(mac_sdk_versions_supported))
+$(warning ****************************************************************)
+$(error Stop.)
+endif
 else
-mac_sdk_versions_supported :=  10.6
-endif # BUILD_MAC_SDK_EXPERIMENTAL
-mac_sdk_versions_installed := $(shell xcodebuild -showsdks |grep macosx | sort | sed -e "s/.*macosx//g")
+mac_sdk_versions_installed := $(shell xcodebuild -showsdks | grep macosx | sort | sed -e "s/.*macosx//g")
 mac_sdk_version := $(firstword $(filter $(mac_sdk_versions_installed), $(mac_sdk_versions_supported)))
 ifeq ($(mac_sdk_version),)
 mac_sdk_version := $(firstword $(mac_sdk_versions_supported))
 endif
-
-mac_sdk_path := $(shell xcode-select -print-path)
-ifeq ($(findstring /Applications,$(mac_sdk_path)),)
-# Legacy Xcode
-mac_sdk_root := /Developer/SDKs/MacOSX$(mac_sdk_version).sdk
-else
-#  Xcode 4.4(App Store) or higher
-# /Applications/Xcode*.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.?.sdk
-mac_sdk_root := $(mac_sdk_path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$(mac_sdk_version).sdk
 endif
 
+mac_sdk_path := $(shell xcode-select -print-path)
+# try /Applications/Xcode*.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.?.sdk
+#  or /Volume/Xcode/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.?.sdk
+mac_sdk_root := $(mac_sdk_path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$(mac_sdk_version).sdk
+ifeq ($(wildcard $(mac_sdk_root)),)
+# try legacy /Developer/SDKs/MacOSX10.?.sdk
+mac_sdk_root := /Developer/SDKs/MacOSX$(mac_sdk_version).sdk
+endif
 ifeq ($(wildcard $(mac_sdk_root)),)
 $(warning *****************************************************)
 $(warning * Can not find SDK $(mac_sdk_version) at $(mac_sdk_root))
-ifeq ($(strip $(BUILD_MAC_SDK_EXPERIMENTAL)),)
-$(warning * If you wish to build using higher version of SDK, )
-$(warning * try setting BUILD_MAC_SDK_EXPERIMENTAL=1 before )
-$(warning * rerunning this command )
-endif
 $(warning *****************************************************)
 $(error Stop.)
 endif
 
-HOST_GLOBAL_CFLAGS += -isysroot $(mac_sdk_root) -mmacosx-version-min=$(mac_sdk_version)
-HOST_GLOBAL_LDFLAGS += -isysroot $(mac_sdk_root) -mmacosx-version-min=$(mac_sdk_version)
+ifeq ($(mac_sdk_version),10.6)
+  gcc_darwin_version := 10
+else
+  gcc_darwin_version := 11
+endif
 
-HOST_GLOBAL_CFLAGS += -fPIC
-HOST_NO_UNDEFINED_LDFLAGS := -Wl,-undefined,error
-
+HOST_TOOLCHAIN_ROOT := prebuilts/gcc/darwin-x86/host/i686-apple-darwin-4.2.1
+HOST_TOOLCHAIN_PREFIX := $(HOST_TOOLCHAIN_ROOT)/bin/i686-apple-darwin$(gcc_darwin_version)
+# Don't do anything if the toolchain is not there
+ifneq (,$(strip $(wildcard $(HOST_TOOLCHAIN_PREFIX)-gcc)))
+HOST_CC  := $(HOST_TOOLCHAIN_PREFIX)-gcc
+HOST_CXX := $(HOST_TOOLCHAIN_PREFIX)-g++
+ifeq ($(mac_sdk_version),10.8)
+# Mac SDK 10.8 no longer has stdarg.h, etc
+host_toolchain_header := $(HOST_TOOLCHAIN_ROOT)/lib/gcc/i686-apple-darwin$(gcc_darwin_version)/4.2.1/include
+HOST_GLOBAL_CFLAGS += -isystem $(host_toolchain_header)
+endif
+else
 HOST_CC := gcc
 HOST_CXX := g++
+endif # $(HOST_TOOLCHAIN_PREFIX)-gcc exists
 HOST_AR := $(AR)
 HOST_STRIP := $(STRIP)
 HOST_STRIP_COMMAND = $(HOST_STRIP) --strip-debug $< -o $@
+
+HOST_GLOBAL_CFLAGS += -isysroot $(mac_sdk_root) -mmacosx-version-min=$(mac_sdk_version) -DMACOSX_DEPLOYMENT_TARGET=$(mac_sdk_version)
+HOST_GLOBAL_LDFLAGS += -isysroot $(mac_sdk_root) -Wl,-syslibroot,$(mac_sdk_root) -mmacosx-version-min=$(mac_sdk_version)
+
+HOST_GLOBAL_CFLAGS += -fPIC -funwind-tables
+HOST_NO_UNDEFINED_LDFLAGS := -Wl,-undefined,error
 
 HOST_SHLIB_SUFFIX := .dylib
 HOST_JNILIB_SUFFIX := .jnilib
 
 HOST_GLOBAL_CFLAGS += \
-	-include $(call select-android-config-h,darwin-x86)
+    -include $(call select-android-config-h,darwin-x86)
+
 ifneq ($(filter 10.7 10.7.% 10.8 10.8.%, $(build_mac_version)),)
        HOST_RUN_RANLIB_AFTER_COPYING := false
 else
@@ -97,35 +115,15 @@ HOST_GLOBAL_ARFLAGS := cqs
 
 HOST_CUSTOM_LD_COMMAND := true
 
-# Workaround for lack of "-Wl,--whole-archive" in MacOS's linker.
-define _darwin-extract-and-include-single-whole-static-lib
-@echo "preparing StaticLib: $(PRIVATE_MODULE) [including $(1)]"
-$(hide) ldir=$(PRIVATE_INTERMEDIATES_DIR)/WHOLE/$(basename $(notdir $(1)))_objs;\
-    mkdir -p $$ldir; \
-    for f in `$(HOST_AR) t $(1)`; do \
-        $(HOST_AR) p $(1) $$f > $$ldir/$$f; \
-    done ;
-
-endef
-
-define darwin-extract-and-include-whole-static-libs
-$(if $(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES), $(hide) rm -rf $(PRIVATE_INTERMEDIATES_DIR)/WHOLE)
-$(foreach lib,$(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES), \
-    $(call _darwin-extract-and-include-single-whole-static-lib, $(lib)))
-endef
-
 define transform-host-o-to-shared-lib-inner
-$(call darwin-extract-and-include-whole-static-libs)
 $(hide) $(PRIVATE_CXX) \
         -dynamiclib -single_module -read_only_relocs suppress \
         $(HOST_GLOBAL_LD_DIRS) \
         $(HOST_GLOBAL_LDFLAGS) \
         $(PRIVATE_ALL_OBJECTS) \
-        $(if $(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES), `find $(PRIVATE_INTERMEDIATES_DIR)/WHOLE -name '*.o' 2>/dev/null`) \
+        $(addprefix -force_load , $(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES)) \
         $(call normalize-host-libraries,$(PRIVATE_ALL_SHARED_LIBRARIES)) \
-        $(if $(PRIVATE_GROUP_STATIC_LIBRARIES),-Wl$(comma)--start-group) \
         $(call normalize-host-libraries,$(PRIVATE_ALL_STATIC_LIBRARIES)) \
-        $(if $(PRIVATE_GROUP_STATIC_LIBRARIES),-Wl$(comma)--end-group) \
         $(PRIVATE_LDLIBS) \
         -o $@ \
         -install_name @rpath/$(notdir $@) \
@@ -144,9 +142,7 @@ $(hide) $(PRIVATE_CXX) \
         $(call normalize-host-libraries,$(PRIVATE_ALL_SHARED_LIBRARIES)) \
         $(PRIVATE_ALL_OBJECTS) \
         $(call normalize-host-libraries,$(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES)) \
-        $(if $(PRIVATE_GROUP_STATIC_LIBRARIES),-Wl$(comma)--start-group) \
         $(call normalize-host-libraries,$(PRIVATE_ALL_STATIC_LIBRARIES)) \
-        $(if $(PRIVATE_GROUP_STATIC_LIBRARIES),-Wl$(comma)--end-group) \
         $(PRIVATE_LDFLAGS) \
         $(PRIVATE_LDLIBS) \
         $(HOST_LIBGCC)

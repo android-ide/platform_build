@@ -31,20 +31,27 @@
 # it includes.
 #
 
-# Unbundled apps will be built with the default product config.
+# Unbundled apps will be built with the most generic product config.
 ifneq ($(TARGET_BUILD_APPS),)
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/core.mk \
-    $(LOCAL_DIR)/generic.mk \
-    $(LOCAL_DIR)/full.mk
+    $(LOCAL_DIR)/aosp_arm.mk \
+    $(LOCAL_DIR)/full.mk \
+    $(LOCAL_DIR)/generic_armv5.mk \
+    $(LOCAL_DIR)/aosp_x86.mk \
+    $(LOCAL_DIR)/full_x86.mk \
+    $(LOCAL_DIR)/aosp_mips.mk \
+    $(LOCAL_DIR)/full_mips.mk
 else
 PRODUCT_MAKEFILES := \
     $(LOCAL_DIR)/core.mk \
     $(LOCAL_DIR)/generic.mk \
     $(LOCAL_DIR)/generic_x86.mk \
     $(LOCAL_DIR)/generic_mips.mk \
+    $(LOCAL_DIR)/aosp_arm.mk \
     $(LOCAL_DIR)/full.mk \
+    $(LOCAL_DIR)/aosp_x86.mk \
     $(LOCAL_DIR)/full_x86.mk \
+    $(LOCAL_DIR)/aosp_mips.mk \
     $(LOCAL_DIR)/full_mips.mk \
     $(LOCAL_DIR)/vbox_x86.mk \
     $(LOCAL_DIR)/sdk.mk \
