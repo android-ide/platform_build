@@ -67,7 +67,7 @@ static bool isSourceNewer(const struct stat* pSrcStat, const struct stat* pDstSt
  */
 static bool isHiresMtime(const struct stat* pSrcStat)
 {
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(AIDE_BUILD)
     return 0;
 #elif defined(__APPLE__)
     return pSrcStat->st_mtimespec.tv_nsec > 0;
